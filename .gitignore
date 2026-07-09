@@ -1,0 +1,25 @@
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+
+# Environment — never commit real credentials
+.env
+.env.*
+!.env.example
+
+# Private notes. Career and strategy docs, deliberately not published.
+/private/
+
+# Local data volumes
+/data/
+*.log
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*~
+
+# macOS
+.DS_Store

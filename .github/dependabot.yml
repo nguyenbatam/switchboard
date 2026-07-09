@@ -1,0 +1,9 @@
+version: 2
+
+# The cargo ecosystem gets added here once Cargo.toml exists. Enabling it against
+# a missing manifest only produces a permanent error in the Dependabot UI.
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
