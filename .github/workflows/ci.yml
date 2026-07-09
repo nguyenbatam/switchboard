@@ -21,7 +21,7 @@ jobs:
     outputs:
       has_cargo: ${{ steps.check.outputs.has_cargo }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: check
         run: |
           if [ -f Cargo.toml ]; then
@@ -36,7 +36,7 @@ jobs:
     if: needs.detect.outputs.has_cargo == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: dtolnay/rust-toolchain@stable
         with:
