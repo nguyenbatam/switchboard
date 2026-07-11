@@ -1,0 +1,3 @@
+{"id": "refund-eu", "title": "EU Refund Policy", "content": "The refund policy for EU customers is 30 days from purchase date. Full refund available for eligible orders."}
+{"id": "auth-rotation", "title": "API Credential Rotation", "content": "To rotate API credentials: generate new key in the admin dashboard, update your clients, then revoke the old key."}
+{"id": "errors", "title": "API Error Codes", "content": "Error code SB-4021 indicates rate limiting. Retry the request after the Retry-After header expires."}

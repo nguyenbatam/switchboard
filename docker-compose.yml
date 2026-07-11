@@ -1,0 +1,71 @@
+name: switchboard
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.5-pg18
+    environment:
+      POSTGRES_USER: switchboard
+      POSTGRES_PASSWORD: switchboard
+      POSTGRES_DB: switchboard
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # Postgres 18 moved PGDATA to /var/lib/postgresql/18/docker. Mount the parent,
+      # which is the directory the image itself declares as a volume.
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U switchboard -d switchboard"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:8.8-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles:
+      - ollama
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollamadata:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  switchboard:
+    build: .
+    ports:
+      - "${SWITCHBOARD_PORT:-8080}:8080"
+    environment:
+      DATABASE_URL: postgres://switchboard:switchboard@postgres:5432/switchboard
+      REDIS_URL: redis://redis:6379
+      # Host Ollama (GPU) via host.docker.internal; override with OLLAMA_BASE_URL in .env
+      SB__PROVIDERS__OLLAMA__BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      RUST_LOG: info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    profiles:
+      - app
+
+volumes:
+  pgdata:
+  redisdata:
+  ollamadata:

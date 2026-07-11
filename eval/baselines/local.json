@@ -1,0 +1,12 @@
+{
+  "profile": "local",
+  "description": "Generic local dev (CPU or GPU)",
+  "suite": "fast",
+  "noise_pct": 0.5,
+  "min_pass_rate": 0.5,
+  "latency_ms": {
+    "search_p95": 2000,
+    "chat_p95": 30000,
+    "embed_p95": 2000
+  }
+}

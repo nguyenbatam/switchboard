@@ -1,0 +1,16 @@
+version: 2
+
+# The cargo ecosystem gets added here once Cargo.toml exists. Enabling it against
+# a missing manifest only produces a permanent error in the Dependabot UI.
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+
+  # Image tags in docker-compose.yml are pinned to exact minors, so they need
+  # something to keep them moving.
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: monthly

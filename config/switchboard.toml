@@ -1,0 +1,119 @@
+[server]
+host = "0.0.0.0"
+port = 8080
+# Ceiling on producing a response, not on streaming its body. Exceeded → 504.
+request_timeout_ms = 300000
+concurrency_limit = 256
+
+# Peers whose `x-forwarded-for` may be believed. Empty means "trust no header":
+# the socket address is used, so nobody can forge their way past `ip_rpm`.
+# Set this to your load balancer's addresses.
+trusted_proxies = []
+
+[database]
+max_connections = 10
+statement_timeout_ms = 5000
+
+[redis]
+pool_size = 8
+
+[auth]
+# When true, requests without a valid key are rejected.
+# When false, unauthenticated requests use the dev tenant.
+require_auth = false
+dev_tenant_id = "00000000-0000-7000-8000-000000000001"
+
+[ratelimit]
+fail_open = true
+default_rpm = 60
+default_tpm = 60000
+ip_rpm = 120
+
+[providers.ollama]
+base_url = "http://localhost:11434"
+# The scarce resource is provider capacity, not HTTP request count. A hard cap here
+# that *refuses* rather than queues is what keeps p99 a constant rather than a
+# measurement of how long the incident has been running. Set it to what this box can
+# actually generate at once.
+max_inflight = 8
+
+# Four separate clocks. One `total` cannot do this job: a 300s ceiling that also
+# governs connect leaves a dead host holding a socket for five minutes, and a 2s
+# ceiling that also governs generation kills every long answer.
+#   connect — TCP/TLS handshake. A dead host should fail fast.
+#   ttft    — request sent, no first byte yet.
+#   stall   — bytes started, then stopped. The half-dead stream.
+#   total   — the whole generation, however healthy it looks.
+#
+# Ollama's ttft is generous because its first request after a cold start pulls the
+# model into memory, which takes far longer than producing a token.
+[providers.ollama.timeouts]
+connect_ms = 2000
+ttft_ms = 120000
+stall_ms = 30000
+total_ms = 300000
+
+[providers.openai]
+base_url = "https://api.openai.com/v1"
+# Keep below your org's RPM/TPM ceiling: OpenAI answers the overflow with 429s, and
+# those would count against our own circuit breaker.
+max_inflight = 64
+
+[providers.openai.timeouts]
+connect_ms = 2000
+ttft_ms = 30000
+stall_ms = 30000
+total_ms = 300000
+
+# Budget threshold notifications.
+#
+# The URL is YOURS, not a tenant's. A tenant-supplied callback is a server-side request
+# forgery primitive aimed at the inside of your own cluster — 169.254.169.254, the
+# database's port, a neighbour's admin endpoint. The gateway POSTs here with `tenant_id`
+# in the payload; you fan out to your customers however you already do.
+#
+# Unset (the default) disables it. `/v1/usage` still exposes `remaining_nano`, and every
+# chat response carries `x-switchboard-budget-remaining-nano`.
+[billing]
+# budget_webhook_url = "https://ops.example.com/hooks/switchboard-budget"
+budget_thresholds = [0.80, 0.90, 1.00]
+webhook_timeout_ms = 3000
+
+[cache]
+exact_ttl_ms = 3600000
+enabled = false
+
+[rag]
+default_embed_model = "nomic-embed-text"
+# Sized in tokens, not characters.
+chunk_tokens = 512
+overlap_tokens = 64
+
+[agent]
+max_iterations = 8
+max_total_tokens = 32000
+tool_timeout_ms = 30000
+enabled = false
+
+[agent.tools]
+sql_allowed_tables = [
+    "tool_ro.tenants_public",
+    "tool_ro.usage_by_model",
+    "tenants_public",
+    "usage_by_model",
+]
+
+# [agent.tools.wallet]
+# rpc_urls = ["https://eth.llamarpc.com", "https://rpc.ankr.com/eth"]
+# max_block_drift = 3
+# timeout_ms = 3000
+
+# [[agent.mcp.servers]]
+# name = "everything"
+# command = "npx"
+# args = ["-y", "@modelcontextprotocol/server-everything"]
+# enabled = false
+
+[telemetry]
+log_format = "pretty"
+metrics_enabled = true

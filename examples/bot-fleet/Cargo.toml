@@ -1,0 +1,44 @@
+# This is its own workspace root, on purpose. It has its own Cargo.lock, its own
+# dependency choices, and no relationship to the crate that builds switchboard.
+#
+# A third party integrating with your gateway has exactly this much access: the HTTP
+# wire in docs/15-latency-and-p99.md section 7. Nothing here may `use switchboard::`.
+[workspace]
+
+[package]
+name = "bot-fleet"
+description = "Shape B: twenty thousand bots, twelve provider slots, and the architecture in between"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.96"
+license = "MIT"
+publish = false
+
+[[bin]]
+name = "producer"
+path = "src/bin/producer.rs"
+
+[[bin]]
+name = "consumer"
+path = "src/bin/consumer.rs"
+
+# The one `run_local_test.sh` runs: a bounded fleet, a real gateway, and a verdict.
+[[bin]]
+name = "simulate"
+path = "src/bin/simulate.rs"
+
+[dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "signal"] }
+reqwest = { version = "0.12", features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+deadpool-redis = { version = "0.19", features = ["rt_tokio_1"] }
+redis = { version = "0.28", features = ["streams"] }
+uuid = { version = "1", features = ["v7", "serde"] }
+rand = "0.9"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+thiserror = "2"
+anyhow = "1"
+sha2 = "0.10"
+hex = "0.4"

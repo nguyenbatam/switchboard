@@ -1,0 +1,10 @@
+pub mod chat;
+pub mod completions;
+pub mod documents;
+pub mod embeddings;
+pub mod invocations;
+pub mod keys;
+pub mod models;
+pub mod ops;
+pub mod search;
+pub mod usage;

@@ -1,0 +1,30 @@
+# Two sides, and a line between them.
+#
+#   crates/switchboard   — the product. This workspace builds it, tests it, gates it.
+#   examples/bot-fleet   — a third party that uses the product. Not a member.
+#
+# bot-fleet is `exclude`d, not `members`ed, and carries its own Cargo.lock. That is
+# deliberate. It is Shape B from docs/14-workloads-and-clients.md: a system that
+# *calls* the gateway, not a feature of it. Its only contract is the HTTP wire in
+# docs/15-latency-and-p99.md section 7.
+#
+# Three things follow, and all three are the point:
+#
+#   * `cargo test` here never runs it. This workspace's CI gates the product only.
+#   * It pins its own dependencies. A third party does not share your lockfile.
+#   * It cannot `use switchboard::` without someone adding a path dependency on
+#     purpose, in a commit, where it can be seen.
+#
+# docs/00-overview.md's standard for an architectural claim is that it be falsifiable.
+# This is what makes the anti-corruption line falsifiable at the repository level.
+
+[workspace]
+resolver = "3"
+members = ["crates/switchboard"]
+exclude = ["examples/bot-fleet"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.96"
+license = "MIT"

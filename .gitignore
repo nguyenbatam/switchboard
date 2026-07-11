@@ -1,0 +1,30 @@
+# Rust — build output at the root and in every nested crate (e.g. examples/bot-fleet)
+target/
+**/*.rs.bk
+*.pdb
+
+# Environment — never commit real credentials
+.env
+.env.*
+!.env.example
+
+# Local config overlay. docs/11 promises this is gitignored; here is where that is true.
+/config/local.toml
+
+# Private notes. Career and strategy docs, deliberately not published.
+/private/
+
+# Local data volumes
+/data/
+*.log
+.venv/
+eval/results/
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*~
+
+# macOS
+.DS_Store

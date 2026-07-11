@@ -1,0 +1,57 @@
+# Two prices per model, and confusing them is how a gateway loses money quietly.
+#
+#   price_in / price_out  — what the TENANT PAYS. Your rate card. Every request is billed
+#                           at the rate of the model that actually answered. Never zero:
+#                           a customer who pays nothing is not a customer.
+#
+#   cost_in / cost_out    — what YOU PAY UPSTREAM. OpenAI's list price for a hosted model;
+#                           amortised GPU-hours and electricity for a local one. Never
+#                           shown to a tenant.
+#
+#   margin = price - cost, and it is the only reason this business exists.
+#
+# Both are USD per million tokens, and both cross `f64` exactly once — at load, into
+# fixed-point `Money`. See `config/pricing.rs`.
+#
+# The commercial shape this encodes: local capacity is sold at a fifth of the hosted
+# model's price and costs a fifth of what it sells for. Hosted capacity is resold at a
+# markup thin enough to be honest and thick enough to pay for the gateway. A caller who
+# only ever asks for `gpt-4o-mini` should go direct, and `examples/bot-fleet`'s report
+# will tell them so. The value is the local model, the fallback, and one wire format.
+
+[[model]]
+alias = "qwen3:4b"
+provider = "ollama"
+upstream_name = "qwen3:4b"
+context = 32768
+# Sold at ~⅓ of gpt-4o-mini. Costs a GPU we already own.
+price_in = 0.05
+price_out = 0.10
+cost_in = 0.01
+cost_out = 0.02
+tokenizer = { kind = "estimate" }
+
+[[model]]
+alias = "gpt-4o-mini"
+provider = "openai"
+upstream_name = "gpt-4o-mini"
+context = 128000
+# We pay OpenAI 0.15 / 0.60. The markup is 33%, and it buys the caller a fallback,
+# a budget, an idempotency key, and one place their usage is recorded.
+price_in = 0.20
+price_out = 0.80
+cost_in = 0.15
+cost_out = 0.60
+tokenizer = { kind = "tiktoken", encoding = "o200k_base" }
+fallback = ["qwen3:4b"]
+
+[[model]]
+alias = "nomic-embed-text"
+provider = "ollama"
+upstream_name = "nomic-embed-text"
+context = 8192
+price_in = 0.02
+price_out = 0.0
+cost_in = 0.004
+cost_out = 0.0
+tokenizer = { kind = "estimate" }

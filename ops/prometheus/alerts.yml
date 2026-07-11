@@ -1,0 +1,127 @@
+groups:
+  - name: switchboard
+    rules:
+      # Somebody was billed for tokens we then failed to write down. This is the
+      # only alert here that costs money every minute it stays firing.
+      - alert: SwitchboardUsageRecordsDropped
+        expr: increase(sb_usage_records_dropped_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Usage rows are being dropped"
+          description: >-
+            {{ $value }} usage rows failed to persist in the last 5 minutes.
+            Tokens were generated and paid for upstream but are missing from
+            usage_records, so both the invoice and the monthly budget counter are
+            now understated. Check Postgres availability and disk.
+
+      # 2 = open. A breaker that stays open is an upstream that has not recovered.
+      - alert: SwitchboardCircuitBreakerOpen
+        expr: sb_circuit_breaker_state == 2
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Circuit breaker open for {{ $labels.provider }}"
+          description: >-
+            {{ $labels.provider }} has been failing more than half its requests
+            for over five minutes. Traffic is being shed or falling back.
+
+      # docs/15 §4: a shed request returns 503 in about a millisecond. Bucketed with
+      # served traffic it drags p99 *down* as the gateway gets sicker — the graph
+      # improves, the alert falls silent, the outage continues. So the latency alert
+      # reads outcome="served" only, and the shed rate is alerted separately. Neither
+      # number means anything alone.
+      - alert: SwitchboardServedLatencyP99
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum(rate(sb_request_duration_seconds_bucket{outcome="served"}[10m])) by (le, route)
+          ) > 30
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p99 latency of *served* requests above 30s on {{ $labels.route }}"
+          description: >-
+            Read this beside SwitchboardShedRate. A falling p99 with a rising shed
+            rate is a saturating gateway, not a recovering one.
+
+      # The gateway refused because *it* was full. Distinct from a provider outage,
+      # which lands in outcome="error" and in sb_provider_errors_total — nobody on call
+      # can make OpenAI faster at 3am, and after the third page they stop reading.
+      - alert: SwitchboardShedRate
+        expr: |
+          sum(rate(sb_requests_shed_total[5m]))
+            / sum(rate(sb_request_duration_seconds_count[5m]))
+            > 0.001
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Shedding more than 0.1% of requests"
+          description: >-
+            docs/15 §1 puts the shed-rate SLO at 0.1% while at or below rated
+            capacity. Above it, either arrivals exceeded capacity or a provider's
+            max_inflight is set below what it can actually serve.
+
+      # Saturation of the resource that actually is scarce. A gateway spends almost no
+      # CPU; it blocks on upstreams.
+      - alert: SwitchboardProviderInflightSaturated
+        expr: |
+          sb_provider_inflight / sb_provider_inflight_limit > 0.95
+        for: 15m
+        labels:
+          severity: info
+        annotations:
+          summary: "{{ $labels.provider }} has held every in-flight slot for 15m"
+          description: >-
+            Sustained saturation of providers.{{ $labels.provider }}.max_inflight.
+            Either raise it to the provider's real capacity, or add capacity. Read
+            beside SwitchboardShedRate: if that is quiet, this is fine.
+
+      - alert: SwitchboardTtftSloBreach
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum(rate(sb_ttft_seconds_bucket[10m])) by (le, model)
+          ) > 5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p99 TTFT above 5s for {{ $labels.model }}"
+          description: >-
+            Time to first token, not total latency: users are staring at an empty
+            response box. Check provider health and queue depth before blaming the
+            model.
+
+      # An estimated token count is a guessed invoice. A little is expected for
+      # models with no vendored tokenizer; a lot means a tokenizer regressed.
+      - alert: SwitchboardTokenCountDrift
+        expr: |
+          sum(rate(sb_token_count_drift_total[15m])) by (model)
+            / sum(rate(sb_requests_total{route="chat"}[15m])) by (model)
+            > 0.10
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Over 10% of {{ $labels.model }} requests have estimated token counts"
+          description: >-
+            Either no tokenizer is configured for this model, or our count
+            disagrees with the upstream count by more than 2%. Billing is
+            approximate until this is fixed.
+
+      - alert: SwitchboardRateLimitDenialSpike
+        expr: sum(rate(sb_ratelimit_denied_total{dimension="budget"}[5m])) > 0
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: "Tenants are hitting their monthly budget ceiling"
+          description: >-
+            Requests are being refused with insufficient_quota. Expected if a
+            tenant genuinely ran out; unexpected in bulk, which would suggest the
+            budget counter was rebuilt wrong.

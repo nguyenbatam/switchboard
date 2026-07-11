@@ -1,0 +1,12 @@
+{
+  "profile": "apple-m4-metal",
+  "description": "MacBook Air (Mac16,12), Apple M4 10-core CPU / 8-core GPU, 16 GB, macOS 26.5.2, host Ollama Metal, qwen3:4b + nomic-embed-text",
+  "suite": "fast",
+  "noise_pct": 0.3,
+  "min_pass_rate": 1.0,
+  "latency_ms": {
+    "search_p95": 600,
+    "chat_p95": 10000,
+    "embed_p95": 400
+  }
+}
