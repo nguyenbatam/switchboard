@@ -193,7 +193,7 @@ jobs:
           cargo run --release --bin loadtest -- \
             --scenario all --duration-secs 8 --no-latency-slo --json target/loadtest.json
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: loadtest-results
