@@ -2,7 +2,7 @@ name: switchboard
 
 services:
   postgres:
-    image: pgvector/pgvector:0.8.5-pg18
+    image: pgvector/pgvector:0.8.6-pg18
     environment:
       POSTGRES_USER: switchboard
       POSTGRES_PASSWORD: switchboard
